@@ -73,6 +73,26 @@ export function getDomainTldPlus1(domain: string): string | null {
 }
 
 /**
+ * Get all parent domain levels for cookie cleanup.
+ * For "a.b.c.example.com", returns ["a.b.c.example.com", "b.c.example.com", "c.example.com", "example.com"].
+ * This ensures cookies at ANY subdomain level are found and removed.
+ */
+export function getAllDomainLevels(domain: string): string[] {
+  const sanitized = sanitizeDomain(domain);
+  if (!sanitized) return [];
+
+  const parts = sanitized.split('.');
+  if (parts.length < 2) return [sanitized];
+
+  const levels: string[] = [];
+  for (let i = 0; i < parts.length - 1; i++) {
+    levels.push(parts.slice(i).join('.'));
+  }
+
+  return levels;
+}
+
+/**
  * Check if a domain is valid.
  */
 export function isValidDomain(domain: string): boolean {

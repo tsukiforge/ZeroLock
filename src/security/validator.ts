@@ -40,6 +40,8 @@ const KNOWN_DOMAINS: Record<string, string> = {
   'slack.com': 'Slack',
   'trello.com': 'Trello',
   'atlassian.com': 'Atlassian',
+  'chatgpt.com': 'ChatGPT',
+  'openai.com': 'OpenAI',
 };
 
 /**

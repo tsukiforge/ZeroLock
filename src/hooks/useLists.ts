@@ -79,6 +79,29 @@ export function useLists(): {
     void refresh();
   }, [refresh]);
 
+  // Listen for storage changes to sync with other contexts
+  useEffect(() => {
+    const handleStorageChange = (
+      changes: Record<string, chrome.storage.StorageChange>,
+    ): void => {
+      if ('whitelist' in changes) {
+        const newWhitelist = changes.whitelist.newValue as WhitelistEntry[] | undefined;
+        if (newWhitelist) {
+          setWhitelist(newWhitelist);
+        }
+      }
+      if ('blacklist' in changes) {
+        const newBlacklist = changes.blacklist.newValue as BlacklistEntry[] | undefined;
+        if (newBlacklist) {
+          setBlacklist(newBlacklist);
+        }
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+  }, []);
+
   const addToWhitelist = useCallback(async (domain: string, label?: string): Promise<boolean> => {
     const response = await sendMessage(MESSAGES.ADD_WHITELIST, { domain, label });
 

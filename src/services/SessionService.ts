@@ -14,7 +14,7 @@ import { tabService } from './TabService';
 import { notificationService } from './NotificationService';
 import { sanitizeDomain } from '../security/sanitizer';
 import { getDomainLabel } from '../security/validator';
-import { getBaseDomain } from '../utils/domain';
+import { getAllDomainLevels } from '../utils/domain';
 
 /** Known official logout URLs for popular sites */
 const LOGOUT_ENDPOINTS: Record<string, string> = {
@@ -37,6 +37,16 @@ const LOGOUT_ENDPOINTS: Record<string, string> = {
   'microsoft.com': 'https://login.live.com/logout.srf',
   'apple.com': 'https://appleid.apple.com/sign-out',
   'slack.com': 'https://slack.com/logout',
+};
+
+/**
+ * Domain migration/alias map.
+ * Maps known old/migrated domains to their current domain for cookie cleanup.
+ * E.g., when logging out from `chat.openai.com`, also remove cookies from `chatgpt.com`.
+ */
+const DOMAIN_ALIASES: Record<string, string[]> = {
+  'openai.com': ['chatgpt.com'],
+  'chat.openai.com': ['chatgpt.com'],
 };
 
 export interface LogoutResult {
@@ -71,39 +81,94 @@ class SessionService {
     const closeTabs = website?.closeTabs ?? false;
     const label = getDomainLabel(sanitized);
 
-    // Step 1: Remove cookies for the main domain
-    let cookiesRemoved = await cookieService.removeCookiesForDomain(sanitized);
+    // Step 1: Remove cookies for ALL domain levels.
+    // For "a.b.c.example.com", we try: a.b.c.example.com, b.c.example.com, c.example.com, example.com
+    // This handles cookies at ANY subdomain level (shared cookies, host-only cookies, etc.)
+    const allDomainLevels = getAllDomainLevels(sanitized);
+    const cleanedLevels = new Set<string>();
+    let cookiesRemoved = 0;
 
-    // Step 1b: Also silently remove cookies for the base domain (e.g., "vercel.app" from "myapp.vercel.app")
-    // This handles shared cookies across subdomains
-    const baseDomain = getBaseDomain(sanitized);
-    if (baseDomain && baseDomain !== sanitized) {
-      const baseCookiesRemoved = await cookieService.removeCookiesForDomain(baseDomain);
-      cookiesRemoved += baseCookiesRemoved;
+    for (const level of allDomainLevels) {
+      if (cleanedLevels.has(level)) continue;
+      cleanedLevels.add(level);
+      
+      try {
+        const removed = await cookieService.removeCookiesForDomain(level);
+        cookiesRemoved += removed;
+      } catch (err) {
+        console.error(`[ZeroLock] Cookie removal error for ${level}:`, err);
+      }
+    }
+
+    // Step 1b: Also remove cookies for known domain aliases (e.g., "chat.openai.com" → "chatgpt.com")
+    // This handles websites that migrated to a new domain
+    const baseDomain = allDomainLevels[allDomainLevels.length - 1] ?? null;
+    const aliases = DOMAIN_ALIASES[sanitized] ?? (baseDomain ? DOMAIN_ALIASES[baseDomain] : undefined) ?? [];
+    for (const aliasDomain of aliases) {
+      if (cleanedLevels.has(aliasDomain)) continue;
+      cleanedLevels.add(aliasDomain);
+      
+      try {
+        const aliasCookiesRemoved = await cookieService.removeCookiesForDomain(aliasDomain);
+        cookiesRemoved += aliasCookiesRemoved;
+        if (aliasCookiesRemoved > 0) {
+          await tabService.reloadTabsForDomain(aliasDomain);
+        }
+      } catch (err) {
+        console.error(`[ZeroLock] Alias cookie removal error for ${aliasDomain}:`, err);
+      }
     }
 
     // Step 2: Attempt official logout endpoint if available
     let logoutEndpointAttempted = false;
     let logoutEndpointSuccess = false;
 
-    const logoutUrl = LOGOUT_ENDPOINTS[sanitized];
-    if (logoutUrl) {
-      logoutEndpointAttempted = true;
-      try {
-        await chrome.tabs.create({ url: logoutUrl, active: false });
-        logoutEndpointSuccess = true;
-      } catch {
-        logoutEndpointSuccess = false;
+    // Check original domain AND alias domains for logout endpoints
+    const domainsToCheck = [sanitized, ...aliases];
+    for (const checkDomain of domainsToCheck) {
+      const logoutUrl = LOGOUT_ENDPOINTS[checkDomain];
+      if (logoutUrl) {
+        logoutEndpointAttempted = true;
+        try {
+          await chrome.tabs.create({ url: logoutUrl, active: false });
+          logoutEndpointSuccess = true;
+          break; // Only need one successful endpoint navigation
+        } catch (err) {
+          console.error(`[ZeroLock] Logout endpoint navigation failed for ${checkDomain}:`, err);
+        }
       }
     }
 
-    // Step 3: Close tabs if enabled
-    let tabsClosed = 0;
-    if (closeTabs) {
-      tabsClosed = await tabService.closeTabsForDomain(sanitized);
+    // Step 3: Reload all tabs for ALL domain levels to show logged-out state
+    // This happens regardless of closeTabs setting
+    for (const level of allDomainLevels) {
+      try {
+        await tabService.reloadTabsForDomain(level);
+      } catch (err) {
+        console.error(`[ZeroLock] Tab reload error for ${level}:`, err);
+      }
+    }
+    // Also reload alias domain tabs
+    for (const aliasDomain of aliases) {
+      if (allDomainLevels.includes(aliasDomain)) continue;
+      try {
+        await tabService.reloadTabsForDomain(aliasDomain);
+      } catch (err) {
+        console.error(`[ZeroLock] Tab reload error for alias ${aliasDomain}:`, err);
+      }
     }
 
-    // Step 4: Clear old notifications and show success notification
+    // Step 4: Close tabs if enabled
+    let tabsClosed = 0;
+    if (closeTabs) {
+      try {
+        tabsClosed = await tabService.closeTabsForDomain(sanitized);
+      } catch (err) {
+        console.error(`[ZeroLock] Tab close error for ${sanitized}:`, err);
+      }
+    }
+
+    // Step 5: Clear old notifications and show success notification
     await notificationService.clearNotification(
       `zerolock-session-${sanitized}`,
     );

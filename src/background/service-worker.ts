@@ -45,25 +45,45 @@ async function initializeExtension(): Promise<void> {
 }
 
 // ============================================================================
+// Context Menu
+// ============================================================================
+
+// Helper to create context menu (uses callback, not Promise)
+function createContextMenu(): void {
+  try {
+    chrome.contextMenus?.removeAll(() => {
+      chrome.contextMenus?.create(
+        {
+          id: 'zerolock-logout-site',
+          title: 'Logout from this site',
+          contexts: ['page'],
+        },
+        () => {
+          // Ignore errors (e.g., if called multiple times)
+        },
+      );
+    });
+  } catch {
+    // contextMenus API may not be available
+  }
+}
+
+// Create context menu at TOP-LEVEL so it runs EVERY time the service worker starts.
+// Chrome MV3 service workers can be terminated and restarted;
+// onInstalled/onStartup don't fire on every wake-up, but top-level code does.
+// Using setTimeout to avoid blocking the initial service worker evaluation.
+setTimeout(() => {
+  createContextMenu();
+}, 0);
+
+// ============================================================================
 // Chrome Event Listeners
 // ============================================================================
 
 // Handle extension installation
 chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install') {
-    // Create context menu only on install (Chrome preserves it across updates)
-    try {
-      await chrome.contextMenus?.create?.({
-        id: 'zerolock-logout-site',
-        title: 'Logout from this site',
-        contexts: ['page'],
-      });
-    } catch {
-      // Silently fail if menu already exists
-    }
-
     await initializeExtension();
-
     // Open options page on first install
     await chrome.runtime.openOptionsPage();
   } else if (details.reason === 'update') {

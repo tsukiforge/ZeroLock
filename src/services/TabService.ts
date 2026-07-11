@@ -85,6 +85,47 @@ class TabService {
   }
 
   /**
+   * Reload all tabs matching a domain.
+   * Used after logout to show the logged-out state.
+   * Returns the number of tabs reloaded.
+   */
+  async reloadTabsForDomain(domain: string): Promise<number> {
+    const sanitized = sanitizeDomain(domain);
+    if (!sanitized) return 0;
+
+    try {
+      const tabs = await chrome.tabs.query({});
+      const matchingTabs = tabs.filter((tab) => {
+        if (!tab.url || !tab.id) return false;
+        try {
+          const url = new URL(tab.url);
+          return (
+            url.hostname === sanitized ||
+            url.hostname.endsWith(`.${sanitized}`)
+          );
+        } catch {
+          return false;
+        }
+      });
+
+      let reloaded = 0;
+      for (const tab of matchingTabs) {
+        if (tab.id) {
+          try {
+            await chrome.tabs.reload(tab.id);
+            reloaded++;
+          } catch {
+            // Tab might no longer exist
+          }
+        }
+      }
+      return reloaded;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
    * Open the options page.
    */
   async openOptionsPage(): Promise<void> {

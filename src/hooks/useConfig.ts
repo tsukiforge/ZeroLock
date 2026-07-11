@@ -71,6 +71,23 @@ export function useConfig(): {
     void refresh();
   }, [refresh]);
 
+  // Listen for storage changes to sync with other contexts
+  useEffect(() => {
+    const handleStorageChange = (
+      changes: Record<string, chrome.storage.StorageChange>,
+    ): void => {
+      if ('config' in changes) {
+        const newConfig = changes.config.newValue as AppConfig | undefined;
+        if (newConfig) {
+          setConfig(newConfig);
+        }
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+  }, []);
+
   const updateConfig = useCallback(async (updates: Partial<AppConfig>): Promise<boolean> => {
     const response = await sendMessage(MESSAGES.UPDATE_CONFIG, { updates });
 

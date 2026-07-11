@@ -37,6 +37,23 @@ export function useTheme(): {
     void loadTheme();
   }, []);
 
+  // Listen for storage changes to sync with other contexts
+  useEffect(() => {
+    const handleStorageChange = (
+      changes: Record<string, chrome.storage.StorageChange>,
+    ): void => {
+      if ('config' in changes) {
+        const newConfig = changes.config.newValue as { theme?: 'light' | 'dark' | 'system' } | undefined;
+        if (newConfig?.theme) {
+          setThemeState(newConfig.theme);
+        }
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+  }, []);
+
   // Resolve theme based on preference and system preference
   useEffect(() => {
     const resolveTheme = (): void => {

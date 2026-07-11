@@ -1,0 +1,629 @@
+Prompt: ZeroLock – Privacy First Session Manager
+Tujuan
+
+Buat sebuah Google Chrome Extension (Manifest V3) bernama ZeroLock.
+
+Tujuan utama:
+
+Mengelola session website secara otomatis.
+Auto logout berdasarkan timer.
+Menghapus session/cookie secara aman.
+Tidak menyimpan password.
+Tidak membaca isi password.
+Tidak mengirim data pengguna ke server.
+Semua proses berjalan 100% lokal (offline-first).
+Prinsip Keamanan
+
+WAJIB:
+
+Tidak pernah membaca password user.
+Tidak pernah menyimpan password.
+Tidak pernah mengirim cookie ke internet.
+Tidak pernah mengirim token.
+Tidak ada analytics.
+Tidak ada telemetry.
+Tidak ada tracking.
+Tidak ada fingerprinting.
+Tidak ada remote code.
+Tidak ada eval().
+Tidak ada Function().
+Tidak ada innerHTML untuk data user.
+Sanitasi seluruh input.
+CSP sangat ketat.
+
+Semua data hanya menggunakan:
+
+chrome.storage.local
+
+Tidak boleh memakai:
+
+localStorage
+sessionStorage
+IndexedDB (kecuali benar-benar diperlukan)
+Fitur
+Dashboard
+
+Menampilkan daftar website.
+
+Contoh:
+
+Facebook
+
+Discord
+
+GitHub
+
+Reddit
+
+Steam
+
+Tambah Website
+
+Tambah Website
+
+User dapat memasukkan:
+
+Domain
+
+Contoh
+
+discord.com
+
+facebook.com
+
+reddit.com
+
+github.com
+
+steamcommunity.com
+
+Timer
+
+Pilihan:
+
+30 menit
+
+1 jam
+
+2 jam
+
+3 jam
+
+6 jam
+
+12 jam
+
+24 jam
+
+Custom
+
+Setelah Timer Habis
+
+Jika website masih login:
+
+Tampilkan Notification
+
+Contoh
+
+Session Discord telah melewati batas waktu.
+
+[Logout]
+[Tunda]
+[Abaikan]
+
+Jika Auto Logout aktif:
+
+hapus cookie website tersebut
+
+hapus session yang diperbolehkan API
+
+buka endpoint logout resmi bila tersedia
+
+tutup tab (opsional)
+
+Whitelist
+
+Website yang tidak boleh logout.
+
+Contoh
+
+accounts.google.com
+
+github.com
+
+bank
+
+office
+
+Blacklist
+
+Website yang selalu logout otomatis.
+
+Panic Button
+
+Logout seluruh website blacklist.
+
+Idle Detection
+
+Jika user idle:
+
+15 menit
+
+30 menit
+
+1 jam
+
+langsung jalankan timer logout.
+
+Browser Close
+
+Opsi:
+
+Logout saat Chrome ditutup.
+
+Lock PC
+
+Jika Windows dikunci:
+
+Logout website yang dipilih.
+
+UI
+
+Simple
+
+Material Design
+
+Dark Mode
+
+Light Mode
+
+Responsive
+
+Accessibility
+
+Keyboard Friendly
+
+Teknologi
+
+Manifest V3
+
+TypeScript
+
+React
+
+Vite
+
+ESLint
+
+Prettier
+
+Vitest
+
+Playwright
+
+Struktur
+
+src/
+
+components/
+
+hooks/
+
+services/
+
+security/
+
+utils/
+
+storage/
+
+notification/
+
+background/
+
+content/
+
+popup/
+
+options/
+
+tests/
+
+Testing
+
+Minimal
+
+95% Coverage
+
+Unit Test
+
+Integration Test
+
+E2E Test
+
+Regression Test
+
+Accessibility Test
+
+Memory Leak Test
+
+Performance Test
+
+Security Audit
+
+Tambahkan pemeriksaan otomatis:
+
+Tidak ada memory leak.
+
+Tidak ada race condition.
+
+Tidak ada XSS.
+
+Tidak ada DOM Injection.
+
+Tidak ada Prototype Pollution.
+
+Tidak ada CSRF.
+
+Tidak ada CSP bypass.
+
+Tidak ada Secret Hardcode.
+
+Tidak ada API Key bocor.
+
+Tidak ada Console Log production.
+
+Tidak ada Debug Mode production.
+
+Tidak ada Dependency Vulnerability.
+
+Semua dependency terbaru.
+
+CI/CD
+
+Gunakan GitHub Actions.
+
+Workflow:
+
+Build
+Lint
+Type Check
+Unit Test
+Integration Test
+Playwright
+Security Scan
+Dependency Audit
+Secret Scan
+CodeQL Analysis
+Semgrep Scan
+License Check
+Build Extension
+Release Artifact
+
+Build gagal apabila:
+
+Coverage <95%
+
+Ada High/Critical vulnerability
+
+Ada secret
+
+Ada memory leak
+
+Ada TypeScript error
+
+Ada lint error
+
+Dokumentasi
+
+Buat:
+
+README.md
+
+SECURITY.md
+
+CONTRIBUTING.md
+
+CHANGELOG.md
+
+LICENSE
+
+CODE_OF_CONDUCT.md
+
+ARCHITECTURE.md
+
+THREAT_MODEL.md
+
+Kualitas Kode
+
+SOLID
+
+KISS
+
+DRY
+
+Clean Architecture
+
+Dependency Injection bila diperlukan
+
+Strict TypeScript
+
+Komentar seperlunya
+
+Kode modular
+
+Mudah dipelihara
+
+Target Akhir
+
+Hasil akhir harus berupa Chrome Extension profesional, ringan, aman, berorientasi privasi (privacy-by-design), tanpa menyimpan data sensitif pengguna, tanpa mengakses password, dan siap dipublikasikan ke Chrome Web Store setelah seluruh pengujian, audit keamanan, dan pipeline CI/CD lulus tanpa temuan kritis.
+
+About ZeroLock
+Tentang
+
+ZeroLock adalah ekstensi Google Chrome yang membantu pengguna mengelola sesi login website secara otomatis untuk meningkatkan keamanan dan privasi.
+
+ZeroLock dirancang dengan prinsip Privacy by Design, sehingga seluruh proses berjalan secara lokal di perangkat pengguna tanpa mengirimkan data sensitif ke server mana pun.
+
+ZeroLock tidak pernah:
+
+Menyimpan password.
+Membaca password.
+Mengirim cookie.
+Mengirim token autentikasi.
+Mengumpulkan data pribadi.
+Melacak aktivitas browsing pengguna.
+
+Semua konfigurasi hanya disimpan di perangkat pengguna menggunakan Chrome Storage.
+
+Misi
+
+Memberikan cara sederhana untuk mengurangi risiko akun tetap login terlalu lama pada perangkat pribadi maupun bersama.
+
+Tujuan
+Melindungi privasi pengguna.
+Mengurangi risiko session hijacking.
+Membantu logout otomatis.
+Memberikan kontrol penuh kepada pengguna.
+Open Source
+
+ZeroLock merupakan proyek yang mengutamakan transparansi.
+
+Source Code:
+GitHub Repository
+
+License:
+MIT License
+
+Privacy
+
+ZeroLock bekerja 100% Offline.
+
+Data tidak pernah dikirim ke server.
+
+Tidak ada:
+
+Analytics
+
+Telemetry
+
+Tracking
+
+Fingerprinting
+
+Advertising
+
+Cloud Sync
+
+Remote Configuration
+
+Permissions Explanation
+
+Jelaskan setiap permission.
+
+Contoh:
+
+cookies
+→ Digunakan untuk menghapus session website.
+
+notifications
+→ Digunakan untuk memberi tahu ketika timer selesai.
+
+storage
+→ Menyimpan konfigurasi pengguna secara lokal.
+
+tabs
+→ Menutup tab jika fitur Auto Close diaktifkan.
+
+host_permissions
+→ Hanya digunakan pada website yang dipilih pengguna.
+
+Security
+
+ZeroLock dibuat menggunakan prinsip:
+
+Least Privilege
+
+Zero Trust
+
+Privacy First
+
+Offline First
+
+No Secret Collection
+
+No Password Storage
+
+No Cookie Upload
+
+No Token Upload
+
+No Remote Execution
+
+Support
+
+Jika mengalami bug atau memiliki saran:
+
+Report Bug
+
+Request Feature
+
+Documentation
+
+GitHub Issues
+
+Discussion Forum
+
+Email Support
+
+FAQ
+
+FAQ
+Apakah ZeroLock membaca password saya?
+
+Tidak.
+
+ZeroLock tidak memiliki akses ke password pengguna.
+
+Apakah cookie saya dikirim ke server?
+
+Tidak.
+
+Cookie tidak pernah meninggalkan perangkat Anda.
+
+Apakah data saya dijual?
+
+Tidak.
+
+ZeroLock tidak mengumpulkan data pengguna.
+
+Mengapa extension meminta izin Cookies?
+
+Agar dapat menghapus session website sesuai timer yang Anda atur.
+
+Mengapa extension meminta izin Notifications?
+
+Untuk mengingatkan ketika sesi login telah melewati batas waktu.
+
+Credits
+
+Developer
+
+Nama Developer
+
+Contributors
+
+Community
+
+Open Source Libraries
+
+License
+
+Version
+
+Version
+
+Build Date
+
+Manifest Version
+
+Browser Compatibility
+
+Changelog
+
+Version History
+
+New Features
+
+Bug Fixes
+
+Security Improvements
+
+Performance Improvements
+
+Footer
+
+Made with ❤️ for Privacy & Security.
+
+ZeroLock © 2026
+
+💡 Ide tambahan yang menurutku akan membuat ZeroLock terlihat lebih profesional
+
+Tambahkan halaman Security Center yang menampilkan status keamanan extension secara transparan:
+
+🟢 Extension Integrity: Verified
+🟢 Local Processing: Enabled
+🟢 Remote Data Collection: Disabled
+🟢 Telemetry: Disabled
+🟢 Analytics: Disabled
+🟢 Password Access: Never
+🟢 Cookie Upload: Never
+🟢 Security Scan: Passed
+🟢 Version: Latest
+
+Halaman seperti ini bisa meningkatkan kepercayaan pengguna karena mereka dapat melihat dengan jelas apa yang dilakukan—dan yang tidak dilakukan—oleh ZeroLock.
+
+Why ZeroLock Exists
+Mengapa ZeroLock Dibuat?
+
+Banyak pengguna internet membiarkan akun tetap login selama berhari-hari, berminggu-minggu, bahkan berbulan-bulan tanpa menyadarinya.
+
+Hal tersebut memang memudahkan penggunaan, tetapi juga meningkatkan risiko apabila:
+
+Perangkat dipinjam orang lain.
+Browser ditinggalkan dalam keadaan terbuka.
+Session atau cookie dicuri oleh malware.
+Pengguna lupa logout di komputer umum.
+Akun tetap aktif meskipun sudah tidak digunakan.
+
+ZeroLock hadir untuk membantu pengguna mengelola masa aktif sesi login secara otomatis, sehingga akun tidak terus-menerus berada dalam keadaan login.
+
+Filosofi
+
+ZeroLock tidak dibuat untuk menggantikan sistem keamanan website.
+
+ZeroLock dibuat sebagai lapisan keamanan tambahan (additional security layer) yang memberikan kontrol lebih besar kepada pengguna terhadap sesi login mereka.
+
+Tujuan
+
+Membantu pengguna:
+
+Mengurangi risiko session yang aktif terlalu lama.
+Membantu logout otomatis sesuai kebutuhan.
+Menjaga privasi ketika menggunakan perangkat bersama.
+Memberikan kendali penuh terhadap website yang tetap login maupun yang harus logout otomatis.
+Privacy First
+
+ZeroLock percaya bahwa privasi adalah hak pengguna.
+
+Karena itu ZeroLock dirancang agar:
+
+Seluruh proses dilakukan secara lokal.
+Tidak mengumpulkan data pengguna.
+Tidak mengirim cookie.
+Tidak membaca password.
+Tidak menyimpan token.
+Tidak memerlukan akun cloud.
+Bukan Antivirus
+
+ZeroLock bukan antivirus.
+
+ZeroLock tidak dapat mencegah malware atau phishing.
+
+Namun ZeroLock membantu mengurangi risiko apabila sesi login dibiarkan aktif terlalu lama.
+
+Visi
+
+Menciptakan ekstensi keamanan browser yang ringan, transparan, mudah digunakan, dan menghormati privasi pengguna tanpa mengorbankan kenyamanan.
+
+Motto
+
+"Your Session, Your Control."
+
+atau
+
+"Stay Logged In Only When You Need To."
+
+atau
+
+"Privacy Starts With Session Control."
