@@ -1,0 +1,14 @@
+name: "ZeroLock CodeQL Config"
+
+queries:
+  - uses: security-and-quality
+
+paths:
+  - src
+
+paths-ignore:
+  - node_modules
+  - dist
+  - tests
+  - "**/*.test.ts"
+  - "**/*.test.tsx"

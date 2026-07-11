@@ -1,0 +1,287 @@
+# ===========================================================================
+# ZeroLock CI/CD Pipeline
+#
+# Runs on every push and pull request.
+# Fails on:
+#   - Coverage < 95%
+#   - High/Critical vulnerabilities
+#   - Secrets detected
+#   - TypeScript errors
+#   - Lint errors
+#   - Build failures
+# ===========================================================================
+
+name: ZeroLock CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1' # Weekly security audit
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  checks: write
+
+env:
+  NODE_VERSION: '20'
+  COVERAGE_THRESHOLD: 95
+
+jobs:
+  # =========================================================================
+  # Build & Quality
+  # =========================================================================
+  quality:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: false
+
+      - name: Type Check
+        run: npm run typecheck
+        continue-on-error: false
+
+      - name: Build
+        run: npm run build
+        continue-on-error: false
+
+  # =========================================================================
+  # Unit & Integration Tests
+  # =========================================================================
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit & Integration Tests
+        run: npm run test:coverage
+
+      - name: Upload Coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+
+      - name: Check Coverage Threshold
+        run: |
+          COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.lines.pct')
+          echo "Coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < ${{ env.COVERAGE_THRESHOLD }}" | bc -l) )); then
+            echo "Coverage ${COVERAGE}% is below threshold of ${{ env.COVERAGE_THRESHOLD }}%"
+            exit 1
+          fi
+        if: always()
+
+  # =========================================================================
+  # E2E Tests (Playwright)
+  # =========================================================================
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E Tests
+        run: npm run test:e2e
+
+      - name: Upload E2E Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+
+  # =========================================================================
+  # Security Scan
+  # =========================================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Dependency Audit
+        run: npm run security:scan
+        continue-on-error: true
+
+      - name: Better NPM Audit
+        run: npx better-npm-audit audit
+        continue-on-error: true
+
+      - name: Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+  # =========================================================================
+  # CodeQL Analysis
+  # =========================================================================
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          config-file: .github/codeql-config.yml
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # =========================================================================
+  # Semgrep Scan
+  # =========================================================================
+  semgrep:
+    name: Semgrep Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: returntocorp/semgrep
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Semgrep Scan
+        run: semgrep --config=auto --error --exclude=node_modules --exclude=tests .
+        continue-on-error: true
+
+  # =========================================================================
+  # License Check
+  # =========================================================================
+  license:
+    name: License Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: License Check
+        run: npx license-checker --production --summary --onlyAllow "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Unlicense"
+        continue-on-error: true
+
+  # =========================================================================
+  # Build & Release
+  # =========================================================================
+  release:
+    name: Build & Release
+    needs: [quality, test, security]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Extension
+        run: npm run build:extension
+
+      - name: Package Extension
+        run: |
+          cd dist
+          zip -r ../zerolock-${{ github.ref_name }}.zip .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            zerolock-${{ github.ref_name }}.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: false

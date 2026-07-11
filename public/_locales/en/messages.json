@@ -1,0 +1,68 @@
+{
+  "appName": {
+    "message": "ZeroLock – Privacy First Session Manager",
+    "description": "The title of the application, displayed in the Chrome Web Store"
+  },
+  "appShortName": {
+    "message": "ZeroLock",
+    "description": "The short name of the application"
+  },
+  "appDescription": {
+    "message": "Privacy-first automatic session manager. Auto-logout websites based on timers, idle detection, and panic button. 100% local, no data collection.",
+    "description": "The description of the application, displayed in the Chrome Web Store"
+  },
+  "sessionExpiredTitle": {
+    "message": "Session Expired",
+    "description": "Notification title when a session expires"
+  },
+  "sessionExpiredMessage": {
+    "message": "$domain$ session has exceeded the time limit.",
+    "description": "Notification message when a session expires",
+    "placeholders": {
+      "domain": {
+        "content": "$1",
+        "example": "Discord"
+      }
+    }
+  },
+  "sessionWarningTitle": {
+    "message": "Session Ending Soon",
+    "description": "Notification title for session expiry warning"
+  },
+  "sessionWarningMessage": {
+    "message": "$domain$ session will expire in $minutes$ minute(s).",
+    "description": "Notification message for session expiry warning",
+    "placeholders": {
+      "domain": { "content": "$1", "example": "Discord" },
+      "minutes": { "content": "$2", "example": "5" }
+    }
+  },
+  "notificationLogout": {
+    "message": "Logout",
+    "description": "Logout button in notification"
+  },
+  "notificationSnooze": {
+    "message": "Snooze",
+    "description": "Snooze button in notification"
+  },
+  "notificationDismiss": {
+    "message": "Dismiss",
+    "description": "Dismiss button in notification"
+  },
+  "panicButton": {
+    "message": "Panic Button",
+    "description": "Panic button label"
+  },
+  "panicConfirm": {
+    "message": "Are you sure? This will log you out of all managed websites immediately.",
+    "description": "Panic button confirmation message"
+  },
+  "contextMenuLogout": {
+    "message": "Logout from this site",
+    "description": "Context menu item for quick logout"
+  },
+  "extensionDescription": {
+    "message": "Automatically manage website sessions. Stay logged in only when you need to.",
+    "description": "Brief extension description for the Chrome toolbar"
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "manifest_version": 3,
+  "name": "ZeroLock – Privacy First Session Manager",
+  "short_name": "ZeroLock",
+  "version": "1.0.0",
+  "description": "Privacy-first automatic session manager. Auto-logout websites based on timers, idle detection, and panic button. 100% local, no data collection.",
+  "author": "ZeroLock Team",
+  "homepage_url": "https://github.com/tsukiforge/ZeroLock",
+  "default_locale": "en",
+  "minimum_chrome_version": "116",
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "ZeroLock - Session Manager"
+  },
+
+  "options_ui": {
+    "page": "src/options/index.html",
+    "open_in_tab": true
+  },
+
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+
+  "permissions": [
+    "cookies",
+    "notifications",
+    "storage",
+    "tabs",
+    "idle",
+    "alarms",
+    "contextMenus"
+  ],
+
+  "host_permissions": [
+    "<all_urls>"
+  ],
+
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; object-src 'none'; frame-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'"
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  "incognito": "split"
+}
