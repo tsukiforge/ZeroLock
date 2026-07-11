@@ -42,6 +42,8 @@ export interface BlacklistEntry {
   domain: string;
   label: string;
   addedAt: number;
+  /** Last time user visited this domain (for 30-day auto-removal) */
+  lastVisitedAt?: number;
 }
 
 /** App configuration */

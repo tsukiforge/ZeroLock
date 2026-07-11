@@ -11,6 +11,7 @@ import { getDomainLabel } from '../security/validator';
 /** Prefix for ZeroLock notification IDs */
 const NOTIFICATION_ID_PREFIX = 'zerolock-session-';
 const LOGOUT_SUCCESS_PREFIX = 'zerolock-logout-success-';
+const BLACKLIST_PROMPT_PREFIX = 'zerolock-blacklist-prompt-';
 
 class NotificationService {
   /**
@@ -59,6 +60,36 @@ class NotificationService {
         title: 'Session Ending Soon',
         message: `${label} session will expire in ${safeMinutes} minute${safeMinutes > 1 ? 's' : ''}.`,
         priority: 1,
+        requireInteraction: false,
+        silent: true,
+      });
+
+      return notificationId;
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Show a blacklist prompt notification.
+   * Asks the user if they want to add the domain to the blacklist.
+   */
+  async showBlacklistPrompt(domain: string): Promise<string> {
+    const safeDomain = sanitizeText(domain);
+    const label = getDomainLabel(safeDomain);
+    const notificationId = `${BLACKLIST_PROMPT_PREFIX}${safeDomain}`;
+
+    try {
+      await chrome.notifications.create(notificationId, {
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: '🔒 Add to Blacklist?',
+        message: `Tambahkan ${label} ke blacklist? Website akan otomatis di-logout setiap dibuka, dan akan dihapus dari blacklist jika tidak dikunjungi 30 hari.`,
+        priority: 1,
+        buttons: [
+          { title: '✅ Tambahkan' },
+          { title: '❌ Tidak' },
+        ],
         requireInteraction: false,
         silent: true,
       });
@@ -136,7 +167,23 @@ class NotificationService {
   handleNotificationClick(
     notificationId: string,
     buttonIndex?: number,
-  ): { action: 'logout' | 'snooze' | 'dismiss' | null; domain: string | null } {
+  ): { action: 'logout' | 'snooze' | 'dismiss' | 'addBlacklist' | 'ignoreBlacklist' | null; domain: string | null } {
+    // Handle blacklist prompt notifications
+    if (notificationId.startsWith(BLACKLIST_PROMPT_PREFIX)) {
+      const domain = notificationId.replace(BLACKLIST_PROMPT_PREFIX, '');
+      if (buttonIndex === undefined) {
+        return { action: 'dismiss', domain };
+      }
+      switch (buttonIndex) {
+        case 0:
+          return { action: 'addBlacklist', domain };
+        case 1:
+          return { action: 'ignoreBlacklist', domain };
+        default:
+          return { action: 'dismiss', domain };
+      }
+    }
+
     // Handle logout success notifications (just dismiss, no action needed)
     if (notificationId.startsWith(LOGOUT_SUCCESS_PREFIX)) {
       return { action: 'dismiss', domain: notificationId.replace(LOGOUT_SUCCESS_PREFIX, '') };

@@ -5,6 +5,31 @@ All notable changes to ZeroLock will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-07-11
+
+### Added
+
+- 🔔 **Blacklist Prompt**: Saat membuka website baru, muncul notifikasi "Apakah Anda ingin menambahkan ke blacklist?"
+- 🧹 **Auto-Cleanup**: Blacklist otomatis menghapus website yang tidak dikunjungi selama 30 hari
+- 🌐 **Subdomain Support**: Logout membersihkan cookies dari SEMUA level domain (a.b.c.example.com → example.com)
+- 🔄 **Tab Reload**: Setelah logout, tab website otomatis di-reload untuk menampilkan state logout
+- 🔗 **Domain Alias**: Logout dari `chat.openai.com` juga membersihkan cookies `chatgpt.com`
+
+### Fixed
+
+- 🍪 **Cookie Removal**: `chrome.cookies.remove()` return value sekarang dicek — hanya menghitung yang benar-benar berhasil
+- 🖱️ **Context Menu**: Menu "Logout from this site" dibuat di top-level service worker agar tidak hilang saat service worker restart
+- 🔄 **Popup ↔ Options Sync**: Perubahan di options langsung ter-reflect di popup via `chrome.storage.onChanged`
+- ⚠️ **Error Logging**: Semua `catch {}` silent diganti dengan `console.error()` untuk debugging
+
+### Changed
+
+- CookieService: Query ALL cookies + filter client-side (lebih reliable untuk public suffix seperti `vercel.app`)
+- SessionService: Logout membersihkan cookies di SEMUA level domain, bukan cuma base domain
+- TypeScript: zero errors, Build: sukses
+
+[1.1.0]: https://github.com/tsukiforge/ZeroLock/releases/tag/v1.1.0
+
 ## [1.0.0] - 2026-01-15
 
 ### Added
@@ -54,4 +79,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Dependency vulnerability auditing
 - Secret scanning
 
+[1.1.0]: https://github.com/tsukiforge/ZeroLock/releases/tag/v1.1.0
 [1.0.0]: https://github.com/tsukiforge/ZeroLock/releases/tag/v1.0.0

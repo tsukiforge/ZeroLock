@@ -20,7 +20,19 @@ import { idleHandler } from './idle-handler';
 import { cookieChangeManager } from './cookie-manager';
 import { panicHandler } from './panic-handler';
 import { extractDomain } from '../utils/domain';
+import { sanitizeDomain } from '../security/sanitizer';
+import { getDomainLabel } from '../security/validator';
 import { MESSAGES } from '../utils/constants';
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Days of inactivity before auto-removing from blacklist */
+const BLACKLIST_CLEANUP_DAYS = 30;
+
+/** Storage key for domains user has declined to blacklist */
+const PROMPT_DENIED_KEY = 'promptDeniedDomains';
 
 // ============================================================================
 // Initialization
@@ -40,6 +52,11 @@ async function initializeExtension(): Promise<void> {
 
   // Start cookie change monitoring
   cookieChangeManager.start();
+
+  // Create daily alarm for blacklist stale entry cleanup
+  await chrome.alarms.create('zerolock-blacklist-cleanup', {
+    periodInMinutes: 1440, // Once per day
+  });
 
   console.info('[ZeroLock] Extension initialized successfully');
 }
@@ -100,6 +117,10 @@ chrome.runtime.onStartup.addListener(async () => {
 // Handle alarms
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   await timerManager.handleAlarm(alarm);
+
+  if (alarm.name === 'zerolock-blacklist-cleanup') {
+    await cleanupStaleBlacklist();
+  }
 });
 
 // Handle idle state changes
@@ -108,7 +129,7 @@ chrome.idle.onStateChanged.addListener(async (newState) => {
 });
 
 // Handle notification button clicks
-chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+chrome.notifications.onButtonClicked.addListener(async (notificationId, buttonIndex) => {
   const { action, domain } = notificationService.handleNotificationClick(
     notificationId,
     buttonIndex,
@@ -141,6 +162,31 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
       void notificationService.clearNotification(notificationId);
       break;
     }
+    case 'addBlacklist': {
+      // User wants to add this domain to blacklist
+      const label = getDomainLabel(domain);
+      const added = await storageService.addToBlacklist(domain, label);
+      if (added) {
+        console.info(`[ZeroLock] Added ${domain} to blacklist via prompt`);
+      }
+      void notificationService.clearNotification(notificationId);
+      break;
+    }
+    case 'ignoreBlacklist': {
+      // User declined - store so we don't ask again
+      void notificationService.clearNotification(notificationId);
+      try {
+        const result = await chrome.storage.local.get(PROMPT_DENIED_KEY);
+        const deniedDomains = (result[PROMPT_DENIED_KEY] as string[]) ?? [];
+        if (!deniedDomains.includes(domain)) {
+          deniedDomains.push(domain);
+          await chrome.storage.local.set({ [PROMPT_DENIED_KEY]: deniedDomains });
+        }
+      } catch {
+        // Silently fail
+      }
+      break;
+    }
   }
 });
 
@@ -152,6 +198,85 @@ chrome.notifications.onClicked.addListener((notificationId) => {
     void sessionService.logoutDomain(domain);
   }
 });
+
+// ============================================================================
+// Blacklist Prompt & Cleanup
+// ============================================================================
+
+/**
+ * Handle a website visit from the content script.
+ * Updates lastVisitedAt for blacklisted domains and shows blacklist prompt for new domains.
+ */
+async function handleWebsiteVisit(domain: string): Promise<void> {
+  try {
+    const sanitized = sanitizeDomain(domain);
+    if (!sanitized) return;
+
+    // Skip common/internal domains
+    if (['localhost', '127.0.0.1', '::1'].includes(sanitized)) return;
+
+    // If domain is already blacklisted, update lastVisitedAt
+    const blacklist = await storageService.getBlacklist();
+    const existingEntry = blacklist.find((e) => e.domain === sanitized);
+    if (existingEntry) {
+      existingEntry.lastVisitedAt = Date.now();
+      // Update the blacklist in storage
+      const newBlacklist = blacklist.map((e) =>
+        e.domain === sanitized ? { ...e, lastVisitedAt: Date.now() } : e,
+      );
+      await chrome.storage.local.set({ blacklist: newBlacklist });
+      return;
+    }
+
+    // If domain is whitelisted, skip prompt
+    const isWhitelisted = await storageService.isWhitelisted(sanitized);
+    if (isWhitelisted) return;
+
+    // Check if user already declined this domain
+    const result = await chrome.storage.local.get(PROMPT_DENIED_KEY);
+    const deniedDomains = (result[PROMPT_DENIED_KEY] as string[]) ?? [];
+    if (deniedDomains.includes(sanitized)) return;
+
+    // Check if blacklist is full
+    if (blacklist.length >= 50) return; // DOMAIN.MAX_BLACKLIST
+
+    // Show blacklist prompt notification
+    await notificationService.showBlacklistPrompt(sanitized);
+  } catch {
+    // Silently fail
+  }
+}
+
+/**
+ * Clean up stale blacklist entries that haven't been visited in 30 days.
+ */
+async function cleanupStaleBlacklist(): Promise<void> {
+  try {
+    const blacklist = await storageService.getBlacklist();
+    const now = Date.now();
+    const thirtyDaysMs = BLACKLIST_CLEANUP_DAYS * 24 * 60 * 60 * 1000;
+
+    const staleEntries = blacklist.filter((entry) => {
+      if (!entry.lastVisitedAt) return false; // No visit data yet, keep it
+      return now - entry.lastVisitedAt > thirtyDaysMs;
+    });
+
+    if (staleEntries.length === 0) return;
+
+    // Remove stale entries
+    const staleDomains = new Set(staleEntries.map((e) => e.domain));
+    const newBlacklist = blacklist.filter((e) => !staleDomains.has(e.domain));
+
+    await chrome.storage.local.set({ blacklist: newBlacklist });
+    storageService.invalidateCache();
+
+    console.info(
+      `[ZeroLock] Auto-removed ${staleEntries.length} stale blacklist entries: ${staleEntries.map((e) => e.domain).join(', ')}`,
+    );
+  } catch {
+    // Silently fail
+  }
+}
 
 // ============================================================================
 // Message Handling
@@ -235,6 +360,14 @@ chrome.runtime.onMessage.addListener(
             const updates = (message.payload?.updates ?? {}) as Record<string, unknown>;
             const config = await storageService.updateConfig(updates as Parameters<typeof storageService.updateConfig>[0]);
             return { success: true, data: config };
+          }          // === Visit Tracking ===
+          case MESSAGES.VISIT_WEBSITE: {
+            const domain = (message.payload?.domain as string) ?? '';
+            if (domain) {
+              // Fire-and-forget: update visit tracking
+              void handleWebsiteVisit(domain);
+            }
+            return { success: true };
           }
 
           // === Whitelist Operations ===

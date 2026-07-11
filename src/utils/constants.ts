@@ -93,6 +93,9 @@ export const MESSAGES = {
   REMOVE_BLACKLIST: 'removeBlacklist',
   GET_SECURITY_STATUS: 'getSecurityStatus',
 
+  // Content Script -> Background
+  VISIT_WEBSITE: 'visitWebsite',
+
   // Background -> Popup/Options
   SESSION_EXPIRED: 'sessionExpired',
   PANIC_COMPLETE: 'panicComplete',

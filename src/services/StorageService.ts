@@ -327,6 +327,13 @@ class StorageService {
   }
 
   /**
+   * Invalidate the internal cache so the next read fetches fresh data from storage.
+   */
+  invalidateCache(): void {
+    this.cache = null;
+  }
+
+  /**
    * Get storage usage information.
    */
   async getStorageInfo(): Promise<{ usedBytes: number; quotaBytes: number }> {
